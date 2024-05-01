@@ -1,4 +1,5 @@
 import requests
+import mock_responses
 
 ## local development
 account = "l7bUFStJQKiGVxTaq-eySg"
@@ -38,22 +39,6 @@ def make_api_call(method, url, headers={}, payload=None):
     print("ERR: Exception raised:", e)
     return False, f"API call failed: {e}"
 
-
-# # Example usage
-# api_url = "https://api.example.com/endpoint"
-# api_headers = {"Authorization": "Bearer YOUR_API_KEY"}
-# api_payload = {"data": "This is some data"}
-
-# success, response = make_api_call(api_url, headers=api_headers, payload=api_payload)
-
-# if success:
-#   print("API call successful!")
-#   # Access the response data (assuming JSON format)
-#   data = response.json()
-#   print(data)
-# else:
-#   print(response)
-
 def handle_get_pipelines():
     print("GET PIPELINES...")
     # account = input("Enter account id:")
@@ -64,8 +49,26 @@ def handle_get_pipelines():
     print(pipeline_url)
     header = { "Harness-Account": account}
 
+    # GET LIST OF PIPELINES
     print("Getting pipelines...")
-    make_api_call("GET", pipeline_url, header, None)
+    # make_api_call("GET", pipeline_url, header, None)
+    # TODO: DEBUG: return mock response
+    pipe_list = mock_responses.get_mock_pipeline_list()
+    # print(pipe_list)
+
+    if len(pipe_list) == 0:
+       print("No pipelines found in this project...")
+    
+    for x in pipe_list:
+    #    if x > 1:
+    #       return 
+       
+       print("Found pipeline:", x["name"])
+       identifier = x["identifier"]
+
+       get_pipeline_url = f"https://app.harness.io/v1/orgs/{org}/projects/{project}/pipelines/{identifier}"
+       pipe_def = make_api_call("GET", get_pipeline_url, header, None)
+       print("PIPE DEF", pipe_def)
 
 
 
