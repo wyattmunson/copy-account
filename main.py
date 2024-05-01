@@ -11,9 +11,73 @@ project = "default_project"
 # TODO: pull account/org/project from env variables
 # TODO: command line argument to get manual input
 
+class Stately:
+    def __init__(self):
+      self.account = None
+      self.current_menu = "main"
+      self.current_selection = None
+      self.current_action = None
+
+    def update_input(self, input):
+      self.current_selection = input
+    #   mainm = {"1": "system", "2": "get_pipes"}
+    #   if self.current_menu == "main":
+    #      self.current_action = mainm.get(input, input)
+    
+    def get_next_action(self):
+      print("INFO: Getting next action...")
+    #   print("INFO: Current Menu: {self.current_menu}, selection: {self.current_selection}")
+    #   print("INFO: Current Menu:", self.current_menu, "selection:", self.current_selection)
+      mainm = {"1": "system", "2": "get_pipes"}
+      if self.current_menu == "main":
+         next_action = mainm.get(self.current_selection, self.current_selection)
+         print("got next action", next_action)
+    #   if self.current_menu == "main" and self.current_selection == 1:
+    #      pass
+    #      # TODO: render next settings
+    #   elif self.current_menu == "main" and self.current_selection == 2:
+    #      self.current_action = "get_pipes"
+    #      print("Should show ")
+    #   else:
+    #      print("ERR: No next action found")
+    
+
+    # def get_next_menu(self):
+
+
+class UI:
+    def get_main_menu():
+       print("=== MAIN MENU ===")
+       print("1. See config")
+       print("2. Copy pipelines")
+    
+    def get_input(prompt="Select an option: "):
+      user_input = input(prompt)
+      return user_input
+
+
+class ConfigManager:
+    def __init__(self):
+        self.source_account = None
+
+
 def main():
-    print("COPY PIPELINES")
-    handle_get_pipelines()
+   print("RUNNING MAIN")
+   ui = UI()
+   stately = Stately()
+   while True:
+      UI.get_main_menu()
+      user_input = UI.get_input()
+      #   TODO: handle bad user inpuit
+      stately.update_input(user_input)
+      next_action = stately.get_next_action()
+      print("Next action: ", next_action)
+
+
+    # tester = innie.get_input("somthing meaningful:")
+    # print("COPY PIPELINES")
+    # handle_get_pipelines()
+#    innie.get_input()
 
 
 def make_api_call(method, url, headers={}, payload=None):
@@ -99,6 +163,7 @@ def handle_get_pipelines():
            raise KeyError(f"Unable to find element: {pipeline_yaml}")
         
         # Write to file
+        # TODO: possibly upload entire pipeline definition as it may be needed for create pipeline API
         file_name = f"output/{identifier}.yaml"
         print(f"Writing YAML for {identifier} to {file_name}")
         write_to_file(file_name, pipeline_yaml)
