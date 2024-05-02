@@ -39,10 +39,15 @@ class UI:
        print("=" * header_len)
        
 
-    def print_menu_options(self, title, options):
+    def print_menu_options(self, title, options, exit_option=True, main_menu_option=True, help_option=False):
        self.print_menu_title(title)
        for index, x in enumerate(options):
           print(f"{index + 1}.", x)
+       
+       if help_option: print("h. Help")
+       if main_menu_option: print("m. Main menu")
+       if exit_option: print("x. Exit / back")
+
 
     def print_system_menu(self):
        menu_options = ["View current settings", "Update configs"]
