@@ -6,6 +6,7 @@ import mock_responses
 import help_text
 from stately import Stately
 from ui import UI
+from configly import ConfigManager
 
 ## local development
 account = "l7bUFStJQKiGVxTaq-eySg"
@@ -21,88 +22,13 @@ project = "default_project"
 
 
 
-class ConfigManager:
-    def __init__(self):
-        print("DEBUG: Initlizating config...")
-        print()
-
-        def check_var(var, prompt):
-           res = os.environ.get(var)
-           if res is None:
-              print(f"ERROR: Environment variable {var} not supplied")
-              res = input(prompt)
-           else:
-            print(f"INFO: Got {var} from environment variable")
-           return res
-
-        # CHECK FOR ENV VARS ON STARTUP
-        # self.source_account = "os.environ.get('MY_HARNESS_ACCOUNT') if not KeyError else None"
-        # self.source_org = "os.environ.get('MY_HARNESS_ORG') if not KeyError else None"
-        # self.source_project = "os.environ.get('MY_HARNESS_PROJECT') if not KeyError else None"
-        # self.source_account = os.environ.get('MY_HARNESS_ACCOUNT') if not KeyError else None
-        self.source_account = check_var("MY_HARNESS_ACCOUNT", "Enter ACCOUNT ID for SOURCE account: ")
-        self.source_org = check_var("MY_HARNESS_ORG", "ENTER ORG ID for SOURCE account: ")
-        self.source_project = check_var("MY_HARNESS_PROJECT", "Enter PROJECT ID for SOURCE account: ")
-        self.target_account = os.environ.get('TARGET_HARNESS_ACCOUNT')
-        self.target_org = os.environ.get('TARGET_HARNESS_ORG')
-        self.target_project = os.environ.get('TARGET_HARNESS_PROJECT')
-        self.target_api_key = os.environ.get('TARGET_HARNESS_API_KEY')
-
-    def get_config(self):
-       return {
-          "source_account": self.source_account,
-          "source_org": self.source_org,
-          "source_project": self.source_project
-       }
-    
-    def update_config(self, config_name, value):
-       print(config_name)
-       if hasattr(self, config_name):
-          setattr(self, config_name, value)
-       else:
-        print(f"Error: Attribute '{config_name}' does not exist.")
-    
-    def get_current_settings(self):
-       # check source configs are all set
-       source_set = True if all([self.source_account, self.source_org, self.source_project]) else False
-       print("SOURCE ACCOUNT SET:\t", source_set)
-       target_set = True if all([self.target_account, self.target_org, self.target_project]) else False
-       print("TARGET ACCOUNT SET:\t", target_set)
-       
-       # system configs
-       current_dir = os.getcwd()
-       print("CURRENT DIR:\t\t", current_dir)
-       code_dir = os.path.dirname(os.path.realpath(__file__))
-       print("CODE PATH:\t\t", code_dir)
-       # check dir mismatch
-       if current_dir != code_dir:
-          print(f"WARN: This code is being executed from a different directory. Execute this code in {code_dir}")
-       
-       res = {
-          "source_account": self.source_account,
-          "source_org": self.source_org,
-          "source_project": self.source_project,
-          "target_account": self.target_account,
-          "target_org": self.target_org,
-          "target_project": self.target_project,
-       }
-       return res
-    def get_current_configs(self):
-       res = {
-          "source_account": self.source_account,
-          "source_org": self.source_org,
-          "source_project": self.source_project,
-          "target_account": self.target_account,
-          "target_org": self.target_org,
-          "target_project": self.target_project,
-       }
-       return res
 
 
 
 def make_api_call(method, url, headers={}, payload=None):
-  magic = "pat.l7bUFStJQKiGVxTaq-eySg.66326bbca6e1b52844ca35a5.EhZWc6lkwMOnLaCMCQj3"
-  headers["x-api-key"] = magic
+#   magic = "pat.l7bUFStJQKiGVxTaq-eySg.66326bbca6e1b52844ca35a5.EhZWc6lkwMOnLaCMCQj3"
+#   headers["x-api-key"] = magic
+
   try:
     response = None
     if method == "GET":
@@ -119,7 +45,7 @@ def make_api_call(method, url, headers={}, payload=None):
 
     # extract JSON payload
     data = response.json()
-    print("data:", data)
+    # print("data:", data)
     return True, data
   except requests.exceptions.RequestException as e:
     print("ERR: Exception raised:", e)
@@ -136,22 +62,22 @@ def write_to_file(filename, content):
         yaml.dump(content, f)
 
 
-def handle_get_pipelines():
-    print("GET PIPELINES...")
-    # account = input("Enter account id:")
-    # org = input("Enter org id:")
-    # project = input("Enter project id:")
+def handle_get_pipelines(configs):
+    print("\n== GETTING PIPELINES ==\n")
+    account = configs['source_account']
+    org = configs['source_org']
+    project = configs['source_project']
+    pat = configs['source_pat']
 
-    pipeline_url = f"https://app.harness.io/v1/orgs/{org}/projects/{project}/pipelines?page=0&limit=30"
+    pipeline_url = f"https://app.harness.io/v1/orgs/{org}/projects/{project}/pipelines?page=0&limit=3"
     print(pipeline_url)
-    header = { "Harness-Account": account}
+    header = { "Harness-Account": account, "x-api-key": pat}
 
     # GET LIST OF PIPELINES
-    print("Getting pipelines...")
-    # make_api_call("GET", pipeline_url, header, None)
+    print("\n++ Getting list of pipelines... ++")
+    res, pipe_list = make_api_call("GET", pipeline_url, header, None)
     # TODO: DEBUG: return mock response
-    pipe_list = mock_responses.get_mock_pipeline_list()
-    # print(pipe_list)
+    # pipe_list = mock_responses.get_mock_pipeline_list()
 
     # Check if project has no pipelines
     # TODO: EXIT when no pipelines are found
@@ -159,20 +85,18 @@ def handle_get_pipelines():
        print("No pipelines found in this project...")
     
     for x in pipe_list:
-    #    if x > 1:
-    #       return 
-       
-        print("Found pipeline:", x["name"])
+
+        identifier = x["identifier"]
+        print(f"\n++ Getting pipeline definition for {identifier} ++")
+        # print("Found pipeline:", x["name"])
 
         # get current pipeline and assemble URL
-        identifier = x["identifier"]
         get_pipeline_url = f"https://app.harness.io/v1/orgs/{org}/projects/{project}/pipelines/{identifier}"
 
         ################ GET PIPELINE DEFINITION ################
         # DEBUG: Turn this back on
-        # pipe_def = make_api_call("GET", get_pipeline_url, header, None)
-        pipe_def = mock_responses.mock_pipeline_definition()
-        # print("PIPE DEF", pipe_def)
+        res_status, pipe_def = make_api_call("GET", get_pipeline_url, header, None)
+        # pipe_def = mock_responses.mock_pipeline_definition()
 
         ################ WRITE TO FILE #############
         # Get pipeline YAML
@@ -180,13 +104,14 @@ def handle_get_pipelines():
 
         # Check if YAML exists
         if pipeline_yaml is None:
-           raise KeyError(f"Unable to find element: {pipeline_yaml}")
-        
-        # Write to file
-        # TODO: possibly upload entire pipeline definition as it may be needed for create pipeline API
-        file_name = f"output/{identifier}.yaml"
-        print(f"Writing YAML for {identifier} to {file_name}")
-        write_to_file(file_name, pipeline_yaml)
+        #    raise KeyError(f"Unable to find element: {pipeline_yaml}")
+           print(f"ERROR: No YAML found for {identifier}. Skipping.")
+        else:
+            # Write to file
+            # TODO: possibly upload entire pipeline definition as it may be needed for create pipeline API
+            file_name = f"output/{identifier}.yaml"
+            print(f"Writing YAML for {identifier} to {file_name}")
+            write_to_file(file_name, pipeline_yaml)
 
 
 
@@ -291,6 +216,8 @@ def main():
          pass
       elif next_action == "get_pipes":
          print("Going to got pipes")
+         configs = configger.get_config()
+         handle_get_pipelines(configs)
       else:
          print("No action caught")
 
